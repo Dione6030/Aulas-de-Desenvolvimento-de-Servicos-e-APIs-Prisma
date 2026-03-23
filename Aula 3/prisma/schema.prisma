@@ -9,7 +9,7 @@ datasource db {
 
 model viagem {
   id          Int        @id @default(autoincrement())
-  localSaida  String     @db.VarChar(200)
+  localSaida  String?    @db.VarChar(200)
   destino     String     @db.VarChar(200)
   transporte  Transporte @default(TERRESTRE)
   preco       Decimal    @db.Decimal(10, 2)
