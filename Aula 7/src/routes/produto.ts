@@ -22,7 +22,7 @@ router.get("/", async (req, res) => {
 
         res.status(200).json(produtos)
     } catch (error) {
-        res.status(500).json({ erro: "Erro no servidor" })
+        res.status(400).json({ erro: "Erro no servidor" })
     }
 })
 
@@ -37,12 +37,12 @@ router.post("/", async (req, res) => {
     const { nome, quantidade, preco } = valida.data
 
     try {
-        const selecao = await prisma.produto.create({
+        const produto = await prisma.produto.create({
             data: { nome, quantidade, preco }
         })
-        res.status(201).json(selecao)
+        res.status(201).json(produto)
     } catch (error) {
-        res.status(500).json({ error })
+        res.status(400).json({ error })
     }
 })
 
@@ -56,11 +56,6 @@ router.put("/:id", async (req, res) => {
 
     const { nome, quantidade, preco } = req.body
 
-    if (!nome || !quantidade || !preco) {
-        res.status(400).json({ erro: "Informe todos os dados" })
-        return
-    }
-
     try {
         const produto = await prisma.produto.update({
             where: { id: Number(id) },
@@ -68,7 +63,7 @@ router.put("/:id", async (req, res) => {
         })
         res.status(200).json(produto)
     } catch (error) {
-        res.status(500).json({ erro: error })
+        res.status(400).json({ erro: error })
     }
 })
 
@@ -81,7 +76,7 @@ router.delete("/:id", async (req, res) => {
         })
         res.status(200).json(produto)
     } catch (error) {
-        res.status(500).json({ erro: error })
+        res.status(400).json({ erro: error })
     }
 })
 

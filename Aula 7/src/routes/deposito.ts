@@ -18,7 +18,7 @@ router.get("/", async (req, res) => {
         })
         res.status(200).json(depositos)
     } catch (error) {
-        res.status(500).json({ erro: "Erro de servidor..."})
+        res.status(400).json({ erro: "Erro de servidor..."})
     }
 })
 
@@ -52,43 +52,7 @@ router.post("/", async (req, res) => {
 
         res.status(201).json({deposito, aluno})
     } catch (error) {
-        res.status(500).json({ error })
-    }
-})
-
-router.put("/:id", async (req, res) => {
-    const valida = depositoSchema.safeParse(req.body)
-    if (!valida.success) {
-        res.status(400).json({ erro: valida.error })
-        return
-    }
-
-    const { id } = req.params
-
-    const { alunoId, tipo, valor } = valida.data
-
-    const aluno = await prisma.aluno.findUnique({
-        where: { id: alunoId }
-    })
-    if (!aluno) {
-        res.status(404).json({ erro: "Aluno não encontrado" })
-        return
-    }
-
-    try {
-        const [deposito, aluno] = await prisma.$transaction([
-            prisma.deposito.update({
-                where: { id: Number(id) },
-                data: { alunoId, tipo, valor }
-            }),
-            prisma.aluno.update({
-                where: { id: alunoId },
-                data: { saldo: valor }
-            })
-        ])
-        res.status(200).json({ deposito, aluno })
-    } catch (error) {
-        res.status(500).json({ erro: error })
+        res.status(400).json({ error })
     }
 })
 
@@ -96,12 +60,21 @@ router.delete("/:id", async (req, res) => {
     const { id } = req.params
 
     try {
-        const deposito = await prisma.deposito.delete({
+        const depositoExcluido = await prisma.deposito.findUnique({
             where: { id: Number(id) }
         })
-        res.status(200).json(deposito)
+        
+        const [deposito, aluno] = await prisma.$transaction([
+            prisma.deposito.delete({ where: { id: Number(id) }}),
+            prisma.aluno.update({
+                data: { saldo: { decrement: depositoExcluido?.valor }},
+                where: { id: depositoExcluido?.alunoId }
+            })
+        ])
+        
+        res.status(200).json({ deposito, aluno })
     } catch (error) {
-        res.status(500).json({ erro: error })
+        res.status(400).json({ erro: error })
     }
 })
 
