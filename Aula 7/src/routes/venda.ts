@@ -1,8 +1,6 @@
 import { prisma } from "../../lib/prisma"
 import { Router } from "express"
-import { error } from "node:console"
 import { z } from "zod"
-import { tr } from "zod/locales"
 
 const router = Router()
 
@@ -78,6 +76,32 @@ router.post("/", async (req, res) => {
             })
         ])
         res.status(201).json(venda)
+    } catch (error) {
+        res.status(400).json({ erro: error })
+    }
+})
+
+router.delete("/:id", async (req, res) => {
+    const { id } = req.params
+
+    try {
+        const vendaExcluida = await prisma.venda.findUnique({
+            where: { id: Number(id) }
+        })
+
+        const [venda, aluno, produto] = await prisma.$transaction([
+            prisma.venda.delete({ where: { id: Number(id) }}),
+            prisma.aluno.update({
+                where: { id: vendaExcluida?.alunoId },
+                data: { saldo: { increment: vendaExcluida ? Number(vendaExcluida.preco) * vendaExcluida.quantidade : 0 } }
+            }),
+            prisma.produto.update({
+                where: { id: vendaExcluida?.produtoId},
+                data: { quantidade: { increment: vendaExcluida ? Number(vendaExcluida.quantidade) : 0 } }
+            })
+        ])
+
+        res.status(200).json({ venda, aluno, produto })
     } catch (error) {
         res.status(400).json({ erro: error })
     }
