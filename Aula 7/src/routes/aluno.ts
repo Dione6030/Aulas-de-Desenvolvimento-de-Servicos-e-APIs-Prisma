@@ -157,7 +157,7 @@ function gerarTabelaHTML(dados: any) {
   // Lançamentos de Vendas
   let totalVendas = 0;
   for (const venda of dados.vendas) {
-    totalVendas += venda.quant * Number(venda.preco)
+    totalVendas += venda.quantidade * Number(venda.preco)
 
     const data = new Date(venda.data)
 
@@ -173,9 +173,9 @@ function gerarTabelaHTML(dados: any) {
     html += `
       <tr>
         <td>${dataFormatada}</td>
-        <td>${venda.quant} x ${venda.produto.nome}</td>
+        <td>${venda.quantidade} x ${venda.produto.nome}</td>
         <td style="text-align: right;">${Number(venda.preco).toLocaleString("pt-br", { minimumFractionDigits: 2 })}</td>
-        <td style="text-align: right;">${(venda.quant * Number(venda.preco)).toLocaleString("pt-br", { minimumFractionDigits: 2 })}</td>
+        <td style="text-align: right;">${(venda.quantidade * Number(venda.preco)).toLocaleString("pt-br", { minimumFractionDigits: 2 })}</td>
         <td> </td>
       </tr>
     `;
