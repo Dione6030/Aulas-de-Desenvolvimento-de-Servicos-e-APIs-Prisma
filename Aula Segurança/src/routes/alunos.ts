@@ -2,35 +2,34 @@ import { prisma } from "../../lib/prisma"
 import { Router } from "express"
 import { z } from "zod"
 import nodemailer from "nodemailer"
+import { verificaToken } from "./verificaToken"
 
 const router = Router()
 
 const alunoSchema = z.object({
-    nome: z.string("O nome do aluno é obrigatório" )
-            .min(10, "O nome do aluno deve conter no mínimo 10 caracteres!" )
-            .max(100, "O nome do aluno deve conter no máximo 100 caracteres!" ),
-    email: z.email("O email do aluno deve ser um email válido!" )
-            .max(60, "O email do aluno deve conter no máximo 60 caracteres!" ),
-    obs: z.string().optional(),
-    turma: z.string("A turma do aluno é obrigatória" )
-            .min(2, "A turma do aluno deve conter no mínimo 2 caracteres!" )
-            .max(4, "A turma do aluno deve conter no máximo 4 caracteres!" ),
-    responsavel: z.string("O nome do responsável do aluno é obrigatório" )
-            .min(10, "O nome do responsável do aluno deve conter no mínimo 10 caracteres!" )
-            .max(60, "O nome do responsável do aluno deve conter no máximo 60 caracteres!" )
+    nome: z.string()
+      .min(3, 'Nome deve possuir no mínimo com 3 caracteres')
+      .max(40, 'Nome deve ter no máximo 40 caracteres'),
+    turma: z.string()
+      .min(2, 'Turma deve possuir no mínimo 2 caracteres')
+      .max(3, 'Turma deve ter no máximo 3 caracteres'),
+    responsavel: z.string()
+      .min(3, 'Responsável deve possuir no mínimo com 3 caracteres')
+      .max(40, 'Responsável deve ter no máximo 40 caracteres'),
+    email: z.email(),
+    obs: z.string().optional()
 })
 
 router.get("/", async (req, res) => {
     try {
         const alunos = await prisma.aluno.findMany()
-        
         res.status(200).json(alunos)
     } catch (error) {
-        res.status(400).json({ erro: "Erro de servidor..."})
+        res.status(500).json({ erro: "Erro no servidor" })
     }
 })
 
-router.post("/", async (req, res) => {
+router.post("/", verificaToken, async (req, res) => {
     const valida = alunoSchema.safeParse(req.body)
     if (!valida.success) {
         res.status(400).json({ erro: valida.error })
@@ -38,73 +37,78 @@ router.post("/", async (req, res) => {
     }
 
     // Desestrutura os dados validados
-    const { nome, email, obs = "", turma, responsavel} = valida.data
+    const { nome, turma, responsavel, email, obs = "" } = valida.data
 
     try {
         const aluno = await prisma.aluno.create({
-            data: { nome, email, obs, turma, responsavel }
+            data: { nome, turma, responsavel, email, obs }
         })
         res.status(201).json(aluno)
     } catch (error) {
-        res.status(400).json({ error })
+        res.status(500).json({ error })
     }
-
-    
 })
 
 router.put("/:id", async (req, res) => {
+    // recebe o id passado como parâmetro
     const { id } = req.params
-    const valida = alunoSchema.safeParse(req.body)
 
+    const valida = alunoSchema.safeParse(req.body)
     if (!valida.success) {
         res.status(400).json({ erro: valida.error })
         return
     }
 
-    const { nome, email, obs, turma, responsavel} = valida.data
+    // Desestrutura os dados validados
+    const { nome, turma, responsavel, email, obs } = valida.data
 
     try {
         const aluno = await prisma.aluno.update({
             where: { id: Number(id) },
-            data: { nome, email, obs, turma, responsavel }
+            data: { nome, turma, responsavel, email, obs }
         })
         res.status(200).json(aluno)
     } catch (error) {
-        res.status(400).json({ error })
+        res.status(500).json({ erro: error })
     }
 })
 
 router.delete("/:id", async (req, res) => {
+    // recebe o id passado como parâmetro
     const { id } = req.params
 
+    // realiza a exclusão da seleção
     try {
-        await prisma.aluno.delete({
+        const aluno = await prisma.aluno.delete({
             where: { id: Number(id) }
         })
-        res.status(204).send()
+        res.status(200).json(aluno)
     } catch (error) {
-        res.status(400).json({ error })
+        res.status(500).json({ erro: error })
     }
 })
 
-router.get("/:id", async (req, res) => {
-    const { id } = req.params
+router.get('/:id', async (req, res) => {
+    const id = Number(req.params.id)
     if (Number.isNaN(id)) {
-        res.status(400).json({ erro: "Código Inválido" })
+        res.status(400).json({ erro: 'Código inválido' })
         return
     }
 
     try {
-        const aluno = await prisma.aluno.findUnique({
-            where: { id: Number(id) }
+        const aluno = await prisma.aluno.findUnique({ 
+            where: { id } 
         })
+
         if (!aluno) {
-            res.status(404).json({ erro: "Aluno não encontrado" })
+            res.status(404).json({ erro: 'Aluno não cadastrada' })
             return
         }
+
         res.status(200).json(aluno)
     } catch (error) {
-        res.status(400).json({ error })
+        console.log(error)
+        res.status(500).json({ erro: 'Erro interno do servidor' })
     }
 })
 
@@ -159,7 +163,7 @@ function gerarTabelaHTML(dados: any) {
   // Lançamentos de Vendas
   let totalVendas = 0;
   for (const venda of dados.vendas) {
-    totalVendas += venda.quantidade * Number(venda.preco)
+    totalVendas += venda.quant * Number(venda.preco)
 
     const data = new Date(venda.data)
 
@@ -175,9 +179,9 @@ function gerarTabelaHTML(dados: any) {
     html += `
       <tr>
         <td>${dataFormatada}</td>
-        <td>${venda.quantidade} x ${venda.produto.nome}</td>
+        <td>${venda.quant} x ${venda.produto.nome}</td>
         <td style="text-align: right;">${Number(venda.preco).toLocaleString("pt-br", { minimumFractionDigits: 2 })}</td>
-        <td style="text-align: right;">${(venda.quantidade * Number(venda.preco)).toLocaleString("pt-br", { minimumFractionDigits: 2 })}</td>
+        <td style="text-align: right;">${(venda.quant * Number(venda.preco)).toLocaleString("pt-br", { minimumFractionDigits: 2 })}</td>
         <td> </td>
       </tr>
     `;
@@ -232,7 +236,7 @@ async function enviaEmail(dados: any) {
 router.get("/email/:id", async (req, res) => {
   const { id } = req.params
   try {
-    const aluno = await prisma.aluno.findUnique({
+    const alunos = await prisma.aluno.findFirst({
       where: { id: Number(id) },
       include: {
         depositos: true,
@@ -244,9 +248,9 @@ router.get("/email/:id", async (req, res) => {
       }
     })
 
-    enviaEmail(aluno)
+    enviaEmail(alunos)
 
-    res.status(200).json(aluno)
+    res.status(200).json(alunos)
   } catch (error) {
     res.status(500).json({ erro: error })
   }
